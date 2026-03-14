@@ -50,18 +50,18 @@ const MODEL_INFO: Record<string, {
     maxWidth: 2048, maxHeight: 2048, defaultWidth: 512, defaultHeight: 512,
     supportsInpainting: true, supportsImg2Img: false, maxSteps: 20, defaultSteps: 20,
   },
-  \"dreamshaper-8-lcm\": {
-    name: \"Dreamshaper-8-LCM\", description: \"风格转换\",
+  "dreamshaper-8-lcm": {
+    name: "Dreamshaper-8-LCM", description: "风格转换",
     maxWidth: 2048, maxHeight: 2048, defaultWidth: 512, defaultHeight: 512,
     supportsInpainting: false, supportsImg2Img: true, maxSteps: 20, defaultSteps: 8,
   },
-  \"stable-diffusion-xl-base-1.0\": {
-    name: \"SDXL Base 1.0\", description: \"标准高质量生成\",
+  "stable-diffusion-xl-base-1.0": {
+    name: "SDXL Base 1.0", description: "标准高质量生成",
     maxWidth: 2048, maxHeight: 2048, defaultWidth: 1024, defaultHeight: 1024,
     supportsInpainting: false, supportsImg2Img: false, maxSteps: 50, defaultSteps: 30,
   },
-  \"stable-diffusion-xl-lightning\": {
-    name: \"SDXL Lightning\", description: \"极速生成 (1-4步)\",
+  "stable-diffusion-xl-lightning": {
+    name: "SDXL Lightning", description: "极速生成 (1-4步)",
     maxWidth: 2048, maxHeight: 2048, defaultWidth: 1024, defaultHeight: 1024,
     supportsInpainting: false, supportsImg2Img: false, maxSteps: 8, defaultSteps: 4,
   },
@@ -78,15 +78,16 @@ function generateKey(prompt: string): string {
   return `${R2_DIR}${safeName}_${timestamp}_${random}`;
 }
 
-async function uploadToR2(env: Env, imageData: number[] | string, prompt: string): Promise<string> {
+async function uploadToR2(env: Env, imageData: number[] | Uint8Array | string, prompt: string): Promise<string> {
   const key = generateKey(prompt) + '.jpg';
   
-  // 处理可能的 base64 字符串
   let buffer: Uint8Array;
   if (typeof imageData === 'string') {
     const binary = atob(imageData);
     buffer = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) buffer[i] = binary.charCodeAt(i);
+  } else if (imageData instanceof Uint8Array) {
+    buffer = imageData;
   } else {
     buffer = new Uint8Array(imageData);
   }
@@ -172,12 +173,12 @@ function createServer(env: Env) {
   );
 
   // 通用生成
-  async function generateAndUpload(modelId: string, inputs: any, prompt: string, numImages: number = 1): Promise<any> {
+  async function generateAndUpload(modelId: any, inputs: any, prompt: string, numImages: number = 1): Promise<any> {
     const keys: string[] = [];
     for (let i = 0; i < numImages; i++) {
       if (numImages > 1) inputs.seed = Math.floor(Math.random() * 1000000);
-      const response = await env.AI.run(modelId, inputs);
-      const key = await uploadToR2(env, response.image, `${prompt} ${i+1}`);
+      const response: any = await env.AI.run(modelId, inputs);
+      const key = await uploadToR2(env, response.image || response, `${prompt} ${i+1}`);
       keys.push(key);
     }
     const links = keys.map(k => `${WORKER_URL}/i/${k}`).join('\n');

@@ -1,220 +1,83 @@
-# Cloudflare AI Image MCP Server
+# Cloudflare AI Image MCP
 
-一个基于 Cloudflare Workers 的 MCP（Model Context Protocol）服务器，让 AI 助手（如 Claude、Cursor 等）能够通过 MCP 协议调用 Cloudflare Workers AI 的图像生成和修改模型。
+这是一个基于 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 的 Cloudflare Workers 服务，允许你通过 AI 助手（如 Claude Desktop）直接调用 Cloudflare Workers AI 的图像生成模型。
 
-## 功能
+## 🚀 快速开始（控制台部署教程）
 
-### 图像生成工具
+如果你不想使用终端命令，可以完全在 Cloudflare 浏览器控制台中完成部署：
 
-1. **generate_image_flux** - 使用 Flux-1-Schnell 模型
-   - 快速生成（4-8 步，约 3 秒）
-   - 适合快速原型和测试
-   - 参数：prompt, steps, seed
+### 1. 准备 Cloudflare 资源
+1. 登录 [Cloudflare 控制台](https://dash.cloudflare.com/)。
+2. **创建 R2 存储桶**：
+   - 点击左侧菜单 "R2" -> "Create bucket"。
+   - 命名为 `mcp-images`（或者你喜欢的名字，记下它）。
+3. **启用 AI**：
+   - 确保你的账户已启用 Workers AI（通常默认开启）。
 
-2. **generate_image_lucid** - 使用 Leonardo Lucid-Origin 模型
-   - 照片级真实感
-   - 支持高分辨率（最高 2500x2500）
-   - 参数：prompt, guidance, width, height, steps, seed, negative_prompt
+### 2. 创建并部署 Worker
+1. 进入 "Workers & Pages" -> "Create application" -> "Create Worker"。
+2. 给你的 Worker 起个名字（例如 `cloudflare-ai-image-mcp`）。
+3. 点击 "Deploy"。
+4. 部署完成后，点击页面右上角的 **"Edit Code"** 按钮。
+5. 在左侧文件列表中，找到并打开 `worker.js` (或者 `index.ts`)。
+6. **删除原有内容**，将本项目 [src/index.ts](src/index.ts) 中的全部代码粘贴进去。
+7. 点击右上角的 **"Deploy"** 按钮。
 
-3. **generate_image_phoenix** - 使用 Leonardo Phoenix 模型
-   - 擅长文本渲染
-   - 提示一致性高
-   - 参数：prompt, guidance, width, height, steps, seed, negative_prompt
+### 3. 配置绑定与变量（关键步骤）
+回到该 Worker 的主页面，点击 **"Settings"** 选项卡：
 
-### 图像修改工具
+#### A. 变量 (Variables)
+1. 找到 "Environment Variables" -> "Add variable"。
+2. 添加变量：
+   - **Variable name**: `PASSWORD`
+   - **Value**: 设置你的访问密码（用于 MCP 连接鉴权）。
+   - 点击 "Save and deploy"。
 
-4. **modify_image_inpainting** - 使用 Stable Diffusion Inpainting
-   - 修改图像特定区域
-   - 需要提供原始图像和遮罩
-   - 参数：prompt, image_b64, mask_b64, strength, steps, seed
+#### B. 绑定 (Bindings)
+1. 找到 "Bindings" -> "Add binding"。
+2. **添加 R2 Bucket 绑定**：
+   - **Service role**: 选择 `R2 Bucket`。
+   - **Variable name**: 必须填写 `IMAGES`。
+   - **R2 bucket**: 选择你第一步创建的存储桶。
+3. **添加 AI 绑定**：
+   - 点击 "Add binding" -> 选择 `AI`。
+   - **Variable name**: 必须填写 `AI`。
+4. 点击 "Save and deploy"。
 
-5. **modify_image_img2img** - 使用 Dreamshaper-8-LCM
-   - 图像到图像转换
-   - 风格迁移
-   - 参数：prompt, image_b64, strength, guidance, steps, seed
+### 4. 获取你的端点
+你的端点 URL 格式通常为：
+`https://项目名.用户名.workers.dev/sse`
 
-6. **list_available_models** - 列出所有可用模型
+---
 
-## 部署步骤
+## 🎨 可用模型
 
-### 1. 安装依赖
+| 模型 ID | 描述 |
+| :--- | :--- |
+| `flux-1-schnell` | 极速生成，质量上乘 |
+| `lucid-origin` | Leonardo 出品，照片级真实感 |
+| `phoenix-1.0` | 擅长渲染图像中的文字 |
+| `stable-diffusion-xl-base-1.0` | 经典的 SDXL 高清生成 |
+| `stable-diffusion-xl-lightning` | 1-4 步极速出图 |
 
-```bash
-cd cloudflare-ai-image-mcp
-npm install
-```
+## 🛠️ 在 Claude Desktop 中配置
 
-### 2. 登录 Cloudflare
-
-```bash
-npx wrangler login
-```
-
-### 3. 配置项目
-
-编辑 `wrangler.jsonc`：
-- 修改 `name` 为你的 Worker 名称
-- 可选：设置 `ALLOWED_USERS` 环境变量限制访问用户
-
-### 4. 部署到 Cloudflare
-
-```bash
-npm run deploy
-```
-
-部署成功后，你会得到类似这样的 URL：
-```
-https://cloudflare-ai-image-mcp.your-account.workers.dev
-```
-
-### 5. 获取 MCP 端点
-
-- SSE 端点：`https://cloudflare-ai-image-mcp.your-account.workers.dev/sse`
-- HTTP 端点：`https://cloudflare-ai-image-mcp.your-account.workers.dev/mcp`
-
-## 连接 MCP 客户端
-
-### Claude Desktop
-
-编辑 Claude Desktop 配置文件（`claude_desktop_config.json`）：
+打开你的 Claude Desktop 配置文件，添加以下内容：
 
 ```json
 {
   "mcpServers": {
-    "cloudflare-images": {
-      "command": "npx",
+    "cloudflare-ai-image": {
+      "command": "curl",
       "args": [
-        "mcp-remote",
-        "https://cloudflare-ai-image-mcp.your-account.workers.dev/sse"
+        "-N",
+        "-H", "Authorization: Bearer 你的密码",
+        "https://你的项目名.你的用户名.workers.dev/sse"
       ]
     }
   }
 }
 ```
 
-### Cursor
-
-在 Cursor 设置中添加 MCP 服务器：
-
-```json
-{
-  "mcpServers": {
-    "cloudflare-images": {
-      "command": "npx",
-      "args": [
-        "mcp-remote",
-        "https://cloudflare-ai-image-mcp.your-account.workers.dev/sse"
-      ]
-    }
-  }
-}
-```
-
-### Cloudflare AI Playground
-
-1. 访问 https://playground.ai.cloudflare.com/
-2. 输入你的 MCP 服务器 URL：`https://cloudflare-ai-image-mcp.your-account.workers.dev/sse`
-3. 点击 Connect
-
-## 使用示例
-
-### 生成图像
-
-在支持的 AI 助手中，你可以说：
-
-```
-使用 flux 模型生成一只赛博朋克风格的猫的图像
-```
-
-```
-用 lucid 模型创建一个未来城市的照片，分辨率 1920x1080
-```
-
-### 修改图像
-
-```
-使用 inpainting 把这个图像中的狗变成狮子
-```
-
-（需要提供图像和遮罩）
-
-```
-用 img2img 把这张照片变成油画风格
-```
-
-## 定价
-
-Cloudflare Workers AI 免费额度：
-- 每天 100,000 次 AI 请求
-
-图像生成模型的定价（按步数计费）：
-- Flux-1-Schnell: $0.000053 / 512x512 tile / step
-- Leonardo 模型：按步数计费
-
-查看最新定价：https://developers.cloudflare.com/workers-ai/pricing/
-
-## 开发
-
-### 本地测试
-
-```bash
-npm run dev
-```
-
-本地服务器将在 `http://localhost:8787` 启动
-
-### 查看日志
-
-```bash
-npm run tail
-```
-
-## 模型说明
-
-### Text-to-Image 模型
-
-| 模型 | 速度 | 质量 | 最佳用途 |
-|------|------|------|----------|
-| flux-1-schnell | 非常快 | 良好 | 快速原型 |
-| lucid-origin | 中等 | 非常高 | 专业照片 |
-| phoenix-1.0 | 中等 | 非常高 | 含文字图像 |
-
-### Image Modification 模型
-
-| 模型 | 类型 | 用途 |
-|------|------|------|
-| stable-diffusion-v1-5-inpainting | Inpainting | 修改特定区域 |
-| dreamshaper-8-lcm | Img2Img | 风格转换 |
-
-## 故障排除
-
-### 部署失败
-
-确保已登录 Cloudflare：
-```bash
-npx wrangler login
-```
-
-### MCP 连接失败
-
-检查：
-1. Worker 是否已部署成功
-2. 端点 URL 是否正确（/sse 或 /mcp）
-3. 防火墙是否允许连接
-
-### 图像生成失败
-
-检查：
-1. 账户是否有足够的 Workers AI 额度
-2. 提示词是否合规（不包含违规内容）
-3. 参数是否在有效范围内
-
-## 相关资源
-
-- [Cloudflare Workers AI 文档](https://developers.cloudflare.com/workers-ai/)
-- [MCP 协议规范](https://modelcontextprotocol.io/)
-- [Cloudflare Agents SDK](https://developers.cloudflare.com/agents/)
-
-## License
-
+## 📄 开源协议
 MIT
