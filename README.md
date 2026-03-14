@@ -31,6 +31,8 @@
 2. 添加变量：
    - **Variable name**: `PASSWORD`
    - **Value**: 设置你的访问密码（用于 MCP 连接鉴权）。
+   - **Variable name**: `CUSTOM_DOMAIN` (可选)
+   - **Value**: 如果你绑定了自定义域名（如 `mcp.example.com`），请填入，否则返回的链接将使用默认的 `.workers.dev` 域名。
    - 点击 "Save and deploy"。
 
 #### B. 绑定 (Bindings)

@@ -6,6 +6,7 @@ export interface Env {
   AI: Ai;
   IMAGES: R2Bucket;
   PASSWORD: string;
+  CUSTOM_DOMAIN?: string;
 }
 
 function checkAuth(request: Request, env: Env): Response | null {
@@ -52,7 +53,16 @@ const MODEL_INFO: Record<string, {
 
 const IMAGE_TTL_SECONDS = 600;
 const R2_DIR = "mcp-images/";
-const WORKER_URL = "https://cloudflare-ai-image-mcp.jwbb903.workers.dev";
+const DEFAULT_WORKER_URL = "https://cloudflare-ai-image-mcp.jwbb903.workers.dev";
+
+function getWorkerUrl(env: Env): string {
+  if (env.CUSTOM_DOMAIN) {
+    let domain = env.CUSTOM_DOMAIN.trim();
+    if (!domain.startsWith('http')) domain = 'https://' + domain;
+    return domain.endsWith('/') ? domain.slice(0, -1) : domain;
+  }
+  return DEFAULT_WORKER_URL;
+}
 
 function generateKey(prompt: string): string {
   const timestamp = Date.now();
@@ -133,12 +143,11 @@ function createServer(env: Env) {
   // 通用生成
   async function generateAndUpload(modelId: any, inputs: any, prompt: string, numImages: number = 1): Promise<any> {
     const keys: string[] = [];
+    const workerUrl = getWorkerUrl(env);
     for (let i = 0; i < numImages; i++) {
       if (numImages > 1) inputs.seed = Math.floor(Math.random() * 1000000);
       const response: any = await env.AI.run(modelId, inputs);
       
-      // 兼容性修复：如果 response 本身就是图片数据（SDXL 常见情况），直接使用；
-      // 如果 response 是对象且包含 image 属性（Flux 常见情况），使用 response.image
       const imageData = (response instanceof Uint8Array || response instanceof ArrayBuffer || response instanceof ReadableStream) 
         ? response 
         : (response.image || response);
@@ -146,7 +155,7 @@ function createServer(env: Env) {
       const key = await uploadToR2(env, imageData, `${prompt} ${i+1}`);
       keys.push(key);
     }
-    const links = keys.map(k => `${WORKER_URL}/i/${k}`).join('\n');
+    const links = keys.map(k => `${workerUrl}/i/${k}`).join('\n');
     const msg = numImages > 1 
       ? `生成 ${keys.length} 张图片成功!\n\n${links}`
       : `生成成功!\n\n${links}`;
