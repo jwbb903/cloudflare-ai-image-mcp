@@ -119,42 +119,6 @@ function createServer(env: Env) {
     return { content: [{ type: "text", text: `可用模型:\n\n${list}` }]};
   });
 
-  // 上传图片到 R2
-  server.tool(
-    "upload_image",
-    "上传图片到 R2，返回 key（用于图片修改）",
-    {
-      image_url: z.string().optional().describe("图片URL，自动下载"),
-      image_b64: z.string().optional().describe("图片Base64"),
-    },
-    async ({ image_url, image_b64 }) => {
-      try {
-        let imageData: number[];
-        
-        if (image_url) {
-          const res = await fetch(image_url);
-          if (!res.ok) return { content: [{ type: "text", text: `下载失败: ${res.status}` }], isError: true };
-          const buffer = await res.arrayBuffer();
-          imageData = Array.from(new Uint8Array(buffer));
-        } else if (image_b64) {
-          const binary = atob(image_b64);
-          imageData = Array.from(new Uint8Array(binary.length)).map((_, i) => binary.charCodeAt(i));
-        } else {
-          return { content: [{ type: "text", text: "需要提供 image_url 或 image_b64" }], isError: true };
-        }
-        
-        const key = await uploadToR2(env, imageData, "upload");
-        
-        return { content: [{
-          type: "text",
-          text: `上传成功!\n\n图片Key: ${key}\n\n访问链接: ${WORKER_URL}/i/${key}\n\n用于图片修改时填写 key 即可`
-        }]};
-      } catch (err: any) {
-        return { content: [{ type: "text", text: `错误: ${err.message}` }], isError: true };
-      }
-    }
-  );
-
   // 通用生成
   async function generateAndUpload(modelId: any, inputs: any, prompt: string, numImages: number = 1): Promise<any> {
     const keys: string[] = [];
