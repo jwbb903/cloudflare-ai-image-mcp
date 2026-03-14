@@ -61,16 +61,27 @@ function generateKey(prompt: string): string {
   return `${R2_DIR}${safeName}_${timestamp}_${random}`;
 }
 
-async function uploadToR2(env: Env, imageData: number[] | Uint8Array | string, prompt: string): Promise<string> {
+async function uploadToR2(env: Env, imageData: any, prompt: string): Promise<string> {
   const key = generateKey(prompt) + '.jpg';
   
-  let buffer: Uint8Array;
+  let buffer: Uint8Array | ReadableStream;
+  
+  if (imageData instanceof ReadableStream) {
+    // 处理流
+    await env.IMAGES.put(key, imageData, {
+      httpMetadata: { contentType: "image/jpeg" },
+    });
+    return key;
+  }
+
   if (typeof imageData === 'string') {
     const binary = atob(imageData);
     buffer = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) buffer[i] = binary.charCodeAt(i);
   } else if (imageData instanceof Uint8Array) {
     buffer = imageData;
+  } else if (imageData instanceof ArrayBuffer) {
+    buffer = new Uint8Array(imageData);
   } else {
     buffer = new Uint8Array(imageData);
   }
