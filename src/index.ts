@@ -25,45 +25,33 @@ const MODEL_INFO: Record<string, {
   maxHeight: number;
   defaultWidth: number;
   defaultHeight: number;
-  supportsInpainting: boolean;
-  supportsImg2Img: boolean;
   maxSteps: number;
   defaultSteps: number;
 }> = {
   "flux-1-schnell": {
     name: "Flux-1-Schnell", description: "Black Forest Labs 快速生成",
     maxWidth: 2048, maxHeight: 2048, defaultWidth: 1024, defaultHeight: 1024,
-    supportsInpainting: false, supportsImg2Img: false, maxSteps: 8, defaultSteps: 4,
+    maxSteps: 8, defaultSteps: 4,
   },
   "lucid-origin": {
     name: "Leonardo Lucid Origin", description: "Leonardo 高质量照片",
     maxWidth: 2500, maxHeight: 2500, defaultWidth: 1120, defaultHeight: 1120,
-    supportsInpainting: false, supportsImg2Img: false, maxSteps: 40, defaultSteps: 25,
+    maxSteps: 40, defaultSteps: 25,
   },
   "phoenix-1.0": {
-    name: "Leonardo Phoenix", description: "擅长文本渲染",
+    name: "Leonardo Phoenix", description: "高质量通用生成",
     maxWidth: 2500, maxHeight: 2500, defaultWidth: 1024, defaultHeight: 1024,
-    supportsInpainting: false, supportsImg2Img: false, maxSteps: 40, defaultSteps: 25,
-  },
-  "stable-diffusion-v1-5-inpainting": {
-    name: "Stable Diffusion Inpainting", description: "局部修改",
-    maxWidth: 2048, maxHeight: 2048, defaultWidth: 512, defaultHeight: 512,
-    supportsInpainting: true, supportsImg2Img: false, maxSteps: 20, defaultSteps: 20,
-  },
-  "dreamshaper-8-lcm": {
-    name: "Dreamshaper-8-LCM", description: "风格转换",
-    maxWidth: 2048, maxHeight: 2048, defaultWidth: 512, defaultHeight: 512,
-    supportsInpainting: false, supportsImg2Img: true, maxSteps: 20, defaultSteps: 8,
+    maxSteps: 40, defaultSteps: 25,
   },
   "stable-diffusion-xl-base-1.0": {
     name: "SDXL Base 1.0", description: "标准高质量生成",
     maxWidth: 2048, maxHeight: 2048, defaultWidth: 1024, defaultHeight: 1024,
-    supportsInpainting: false, supportsImg2Img: false, maxSteps: 50, defaultSteps: 30,
+    maxSteps: 50, defaultSteps: 30,
   },
   "stable-diffusion-xl-lightning": {
     name: "SDXL Lightning", description: "极速生成 (1-4步)",
     maxWidth: 2048, maxHeight: 2048, defaultWidth: 1024, defaultHeight: 1024,
-    supportsInpainting: false, supportsImg2Img: false, maxSteps: 8, defaultSteps: 4,
+    maxSteps: 8, defaultSteps: 4,
   },
 };
 
@@ -125,7 +113,7 @@ function createServer(env: Env) {
       if (!info) return { content: [{ type: "text", text: `未知模型: ${model}` }], isError: true };
       return { content: [{
         type: "text",
-        text: `模型: ${info.name}\n\n${info.description}\n\n分辨率: ${info.defaultWidth}x${info.defaultHeight} (最大 ${info.maxWidth}x${info.maxHeight})\n步数: ${info.defaultSteps} (最大 ${info.maxSteps})\nInpainting: ${info.supportsInpainting ? '✅' : '❌'}\nImg2Img: ${info.supportsImg2Img ? '✅' : '❌'}`
+        text: `模型: ${info.name}\n\n${info.description}\n\n分辨率: ${info.defaultWidth}x${info.defaultHeight} (最大 ${info.maxWidth}x${info.maxHeight})\n步数: ${info.defaultSteps} (最大 ${info.maxSteps})`
       }]};
     }
   );
@@ -225,12 +213,42 @@ function createServer(env: Env) {
   // Phoenix
   server.tool(
     "generate_image_phoenix",
-    "Phoenix 文本渲染图片 (请使用英文提示词)",
+    "Phoenix 生成高质量图片 (请使用英文提示词)",
     { prompt: z.string(), width: z.number().optional(), height: z.number().optional(), steps: z.number().optional() },
     async ({ prompt, width, height, steps }) => {
       try {
         const info = MODEL_INFO["phoenix-1.0"];
         return generateAndUpload("@cf/leonardo/phoenix-1.0", { prompt, width: width || info.defaultWidth, height: height || info.defaultHeight, steps: steps || info.defaultSteps }, prompt, 1);
+      } catch (err: any) {
+        return { content: [{ type: "text", text: `错误: ${err.message}` }], isError: true };
+      }
+    }
+  );
+
+  // SDXL Base
+  server.tool(
+    "generate_image_sdxl_base",
+    "SDXL Base 1.0 标准高清生成 (请使用英文提示词)",
+    { prompt: z.string(), width: z.number().optional(), height: z.number().optional(), steps: z.number().optional() },
+    async ({ prompt, width, height, steps }) => {
+      try {
+        const info = MODEL_INFO["stable-diffusion-xl-base-1.0"];
+        return generateAndUpload("@cf/stabilityai/stable-diffusion-xl-base-1.0", { prompt, width: width || info.defaultWidth, height: height || info.defaultHeight, num_steps: steps || info.defaultSteps }, prompt, 1);
+      } catch (err: any) {
+        return { content: [{ type: "text", text: `错误: ${err.message}` }], isError: true };
+      }
+    }
+  );
+
+  // SDXL Lightning
+  server.tool(
+    "generate_image_sdxl_lightning",
+    "SDXL Lightning 极速高清生成 (请使用英文提示词)",
+    { prompt: z.string(), width: z.number().optional(), height: z.number().optional(), steps: z.number().optional() },
+    async ({ prompt, width, height, steps }) => {
+      try {
+        const info = MODEL_INFO["stable-diffusion-xl-lightning"];
+        return generateAndUpload("@cf/bytedance/stable-diffusion-xl-lightning", { prompt, width: width || info.defaultWidth, height: height || info.defaultHeight, num_steps: steps || info.defaultSteps }, prompt, 1);
       } catch (err: any) {
         return { content: [{ type: "text", text: `错误: ${err.message}` }], isError: true };
       }
