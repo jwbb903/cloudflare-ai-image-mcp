@@ -235,26 +235,6 @@ function createServer(env: Env) {
     }
   );
 
-  // Inpainting - 暂时返回提示
-  server.tool(
-    "modify_image_inpainting",
-    "局部修改图片 (开发中，需要特定输入格式)",
-    { prompt: z.string(), image_key: z.string().optional(), image_url: z.string().optional(), mask_key: z.string().optional(), mask_url: z.string().optional(), width: z.number().optional(), height: z.number().optional(), steps: z.number().optional(), strength: z.number().optional() },
-    async () => {
-      return { content: [{ type: "text", text: "此功能正在开发中。\n\n当前支持的流程：\n1. 使用 generate_image_flux 生成图片\n2. 图片自动保存到 R2\n\n图片修改功能需要先将图片解码为像素数组，暂时不可用。" }]};
-    }
-  );
-
-  // Img2Img - 暂时返回提示
-  server.tool(
-    "modify_image_img2img",
-    "图像风格转换 (开发中)",
-    { prompt: z.string(), image_key: z.string().optional(), image_url: z.string().optional(), width: z.number().optional(), height: z.number().optional(), steps: z.number().optional(), strength: z.number().optional(), guidance: z.number().optional() },
-    async () => {
-      return { content: [{ type: "text", text: "此功能正在开发中。\n\n当前支持的流程：\n1. 使用 generate_image_flux 生成图片\n2. 图片自动保存到 R2\n\n风格转换功能需要先将图片解码为像素数组，暂时不可用。" }]};
-    }
-  );
-
   return server;
 }
 
