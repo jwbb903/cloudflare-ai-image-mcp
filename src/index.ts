@@ -38,11 +38,6 @@ const MODEL_INFO: Record<string, {
     maxWidth: 2500, maxHeight: 2500, defaultWidth: 1120, defaultHeight: 1120,
     maxSteps: 40, defaultSteps: 25,
   },
-  "phoenix-1.0": {
-    name: "Leonardo Phoenix", description: "高质量通用生成",
-    maxWidth: 2500, maxHeight: 2500, defaultWidth: 1024, defaultHeight: 1024,
-    maxSteps: 40, defaultSteps: 25,
-  },
   "stable-diffusion-xl-base-1.0": {
     name: "SDXL Base 1.0", description: "标准高质量生成",
     maxWidth: 2048, maxHeight: 2048, defaultWidth: 1024, defaultHeight: 1024,
@@ -204,21 +199,6 @@ function createServer(env: Env) {
         const inputs: any = { prompt, width: width || info.defaultWidth, height: height || info.defaultHeight, num_steps: steps || info.defaultSteps, guidance: guidance || 4.5 };
         if (negative_prompt) inputs.negative_prompt = negative_prompt;
         return generateAndUpload("@cf/leonardo/lucid-origin", inputs, prompt, num_images);
-      } catch (err: any) {
-        return { content: [{ type: "text", text: `错误: ${err.message}` }], isError: true };
-      }
-    }
-  );
-
-  // Phoenix
-  server.tool(
-    "generate_image_phoenix",
-    "Phoenix 生成高质量图片 (请使用英文提示词)",
-    { prompt: z.string(), width: z.number().optional(), height: z.number().optional(), steps: z.number().optional() },
-    async ({ prompt, width, height, steps }) => {
-      try {
-        const info = MODEL_INFO["phoenix-1.0"];
-        return generateAndUpload("@cf/leonardo/phoenix-1.0", { prompt, width: width || info.defaultWidth, height: height || info.defaultHeight, steps: steps || info.defaultSteps }, prompt, 1);
       } catch (err: any) {
         return { content: [{ type: "text", text: `错误: ${err.message}` }], isError: true };
       }
