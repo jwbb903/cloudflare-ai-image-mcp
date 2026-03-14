@@ -125,7 +125,14 @@ function createServer(env: Env) {
     for (let i = 0; i < numImages; i++) {
       if (numImages > 1) inputs.seed = Math.floor(Math.random() * 1000000);
       const response: any = await env.AI.run(modelId, inputs);
-      const key = await uploadToR2(env, response.image || response, `${prompt} ${i+1}`);
+      
+      // 兼容性修复：如果 response 本身就是图片数据（SDXL 常见情况），直接使用；
+      // 如果 response 是对象且包含 image 属性（Flux 常见情况），使用 response.image
+      const imageData = (response instanceof Uint8Array || response instanceof ArrayBuffer || response instanceof ReadableStream) 
+        ? response 
+        : (response.image || response);
+
+      const key = await uploadToR2(env, imageData, `${prompt} ${i+1}`);
       keys.push(key);
     }
     const links = keys.map(k => `${WORKER_URL}/i/${k}`).join('\n');
